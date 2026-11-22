@@ -26,6 +26,7 @@ private slots:
     void runAll();
     void runSelected();
     void runAutomaticProfiles();
+    void plansReady();
     void syncFinished();
 
 private:
@@ -33,13 +34,18 @@ private:
     void saveProfiles() const;
     void refreshTable();
     void runProfiles(const QVector<SyncProfile>& profiles, bool automatic);
+    void executePendingPlans();
+    void setBusy(bool busy);
     QVector<SyncProfile> selectedProfiles() const;
 
     QVector<SyncProfile> m_profiles;
     QVector<QDateTime> m_lastAutomaticRun;
+    QVector<SyncPlan> m_pendingPlans;
     QTableWidget* m_table = nullptr;
     QPlainTextEdit* m_log = nullptr;
     QToolBar* m_toolbar = nullptr;
     QTimer* m_autoTimer = nullptr;
-    QFutureWatcher<QStringList>* m_watcher = nullptr;
+    QFutureWatcher<QVector<SyncPlan>>* m_planWatcher = nullptr;
+    QFutureWatcher<QStringList>* m_runWatcher = nullptr;
+    bool m_pendingAutomatic = false;
 };
