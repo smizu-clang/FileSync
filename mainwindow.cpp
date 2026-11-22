@@ -1,7 +1,9 @@
 #include "mainwindow.h"
 
 #include <QAbstractItemView>
+#include <QApplication>
 #include <QCheckBox>
+#include <QColor>
 #include <QComboBox>
 #include <QDateTime>
 #include <QDialog>
@@ -21,6 +23,7 @@
 #include <QLineEdit>
 #include <QMessageBox>
 #include <QPlainTextEdit>
+#include <QPalette>
 #include <QPushButton>
 #include <QSet>
 #include <QSettings>
@@ -37,6 +40,34 @@ bool isOneWay(SyncMode mode)
 {
     return mode == SyncMode::SourceToDestination || mode == SyncMode::DestinationToSource;
 }
+
+class AppearanceDialog : public QDialog {
+public:
+    explicit AppearanceDialog(bool dark, QWidget* parent = nullptr)
+        : QDialog(parent)
+    {
+        setWindowTitle(QStringLiteral("外観設定"));
+        auto* layout = new QVBoxLayout(this);
+        auto* heading = new QLabel(QStringLiteral("アプリのテーマ"), this);
+        heading->setObjectName(QStringLiteral("dialogHeading"));
+        layout->addWidget(heading);
+        layout->addWidget(new QLabel(QStringLiteral("ライトまたはダークの配色を選択します。"), this));
+        m_theme = new QComboBox(this);
+        m_theme->addItem(QStringLiteral("ライト"), false);
+        m_theme->addItem(QStringLiteral("ダーク"), true);
+        m_theme->setCurrentIndex(dark ? 1 : 0);
+        layout->addWidget(m_theme);
+        auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
+        connect(buttons, &QDialogButtonBox::accepted, this, &QDialog::accept);
+        connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
+        layout->addWidget(buttons);
+    }
+
+    bool darkTheme() const { return m_theme->currentData().toBool(); }
+
+private:
+    QComboBox* m_theme = nullptr;
+};
 
 class ProfileDialog : public QDialog {
 public:
@@ -288,18 +319,30 @@ MainWindow::MainWindow(QWidget* parent)
 {
     setWindowTitle(QStringLiteral("FileSync"));
     resize(1120, 700);
+    QSettings settings;
+    applyTheme(settings.value("appearance/dark", false).toBool());
 
     m_toolbar = addToolBar(QStringLiteral("同期"));
+    m_toolbar->setMovable(false);
+    m_toolbar->setFloatable(false);
     m_toolbar->addAction(QStringLiteral("追加"), this, &MainWindow::addProfile);
     m_toolbar->addAction(QStringLiteral("編集"), this, &MainWindow::editProfile);
     m_toolbar->addAction(QStringLiteral("削除"), this, &MainWindow::removeProfile);
     m_toolbar->addSeparator();
     m_toolbar->addAction(QStringLiteral("選択を同期"), this, &MainWindow::runSelected);
     m_toolbar->addAction(QStringLiteral("すべて同期"), this, &MainWindow::runAll);
+    m_toolbar->addSeparator();
+    m_toolbar->addAction(QStringLiteral("外観"), this, &MainWindow::openAppearanceSettings);
 
     auto* central = new QWidget(this);
     auto* layout = new QVBoxLayout(central);
+    layout->setContentsMargins(22, 18, 22, 20);
+    layout->setSpacing(14);
+    auto* profileHeading = new QLabel(QStringLiteral("同期プロファイル"), central);
+    profileHeading->setObjectName(QStringLiteral("sectionHeading"));
+    layout->addWidget(profileHeading);
     m_table = new QTableWidget(0, 5, central);
+    m_table->setObjectName(QStringLiteral("profileTable"));
     m_table->setHorizontalHeaderLabels({QStringLiteral("設定名"), QStringLiteral("同期の種類"),
                                         QStringLiteral("更新元"), QStringLiteral("更新先"),
                                         QStringLiteral("自動")});
@@ -314,8 +357,11 @@ MainWindow::MainWindow(QWidget* parent)
     connect(m_table, &QTableWidget::cellDoubleClicked, this, &MainWindow::editProfile);
     layout->addWidget(m_table, 3);
 
-    layout->addWidget(new QLabel(QStringLiteral("更新したファイルのログ / エラー"), central));
+    auto* logHeading = new QLabel(QStringLiteral("アクティビティ"), central);
+    logHeading->setObjectName(QStringLiteral("sectionHeading"));
+    layout->addWidget(logHeading);
     m_log = new QPlainTextEdit(central);
+    m_log->setObjectName(QStringLiteral("activityLog"));
     m_log->setReadOnly(true);
     layout->addWidget(m_log, 2);
     setCentralWidget(central);
@@ -329,6 +375,70 @@ MainWindow::MainWindow(QWidget* parent)
     m_autoTimer->setInterval(60 * 1000);
     connect(m_autoTimer, &QTimer::timeout, this, &MainWindow::runAutomaticProfiles);
     m_autoTimer->start();
+}
+
+void MainWindow::applyTheme(bool dark)
+{
+    const QString window = dark ? QStringLiteral("#111827") : QStringLiteral("#eaf2fb");
+    const QString surface = dark ? QStringLiteral("rgba(31, 42, 61, 225)") : QStringLiteral("rgba(255, 255, 255, 222)");
+    const QString raised = dark ? QStringLiteral("rgba(43, 57, 79, 238)") : QStringLiteral("rgba(255, 255, 255, 245)");
+    const QString text = dark ? QStringLiteral("#edf4ff") : QStringLiteral("#203047");
+    const QString muted = dark ? QStringLiteral("#a9bad1") : QStringLiteral("#6b7d95");
+    const QString border = dark ? QStringLiteral("rgba(183, 204, 235, 38)") : QStringLiteral("rgba(78, 112, 158, 38)");
+    const QString accent = dark ? QStringLiteral("#72aaff") : QStringLiteral("#3979d8");
+    const QString hover = dark ? QStringLiteral("rgba(114, 170, 255, 28)") : QStringLiteral("rgba(57, 121, 216, 18)");
+    const QString selection = dark ? QStringLiteral("#345b91") : QStringLiteral("#cfe2ff");
+
+    QPalette palette = QApplication::palette();
+    palette.setColor(QPalette::Window, QColor(window));
+    palette.setColor(QPalette::WindowText, QColor(text));
+    palette.setColor(QPalette::Base, QColor(dark ? QStringLiteral("#182235") : QStringLiteral("#f8fbff")));
+    palette.setColor(QPalette::AlternateBase, QColor(dark ? QStringLiteral("#1d2a40") : QStringLiteral("#f0f6ff")));
+    palette.setColor(QPalette::Text, QColor(text));
+    palette.setColor(QPalette::Button, QColor(dark ? QStringLiteral("#263750") : QStringLiteral("#f7faff")));
+    palette.setColor(QPalette::ButtonText, QColor(text));
+    palette.setColor(QPalette::Highlight, QColor(selection));
+    palette.setColor(QPalette::HighlightedText, QColor(text));
+    QApplication::setPalette(palette);
+
+    const QString style = QStringLiteral(
+        "QMainWindow { background: qlineargradient(x1:0,y1:0,x2:1,y2:1, stop:0 %1, stop:1 %2); }"
+        "QWidget { color:%3; font-family:'Noto Sans'; font-size:10pt; }"
+        "QToolBar { background:%4; border:1px solid %5; border-radius:14px; spacing:7px; padding:8px 12px; margin:12px 16px 0 16px; }"
+        "QToolButton { background:transparent; border:1px solid transparent; border-radius:9px; padding:8px 12px; }"
+        "QToolButton:hover { background:%6; border-color:%5; }"
+        "QLabel#sectionHeading, QLabel#dialogHeading { font-size:15pt; font-weight:650; padding:2px 1px; }"
+        "QTableWidget, QPlainTextEdit { background:%4; alternate-background-color:%7; border:1px solid %5; border-radius:16px; padding:8px; selection-background-color:%8; selection-color:%3; }"
+        "QHeaderView::section { background:%9; color:%10; border:0; border-bottom:1px solid %5; padding:10px 9px; font-weight:600; }"
+        "QTableWidget::item { padding:7px; border:0; }"
+        "QTableWidget::item:hover { background:%6; }"
+        "QLineEdit, QComboBox, QSpinBox { background:%9; border:1px solid %5; border-radius:9px; padding:8px 10px; selection-background-color:%8; }"
+        "QLineEdit:focus, QComboBox:focus, QSpinBox:focus { border:1px solid %11; }"
+        "QPushButton { background:%9; border:1px solid %5; border-radius:9px; padding:8px 14px; }"
+        "QPushButton:hover { background:%6; border-color:%11; }"
+        "QPushButton:default { background:%11; color:white; border-color:%11; font-weight:600; }"
+        "QCheckBox { spacing:8px; } QCheckBox::indicator { width:17px; height:17px; }"
+        "QDialog { background:%1; } QDialogButtonBox { border:0; }"
+        "QScrollBar:vertical { background:transparent; width:10px; margin:4px; }"
+        "QScrollBar::handle:vertical { background:%5; border-radius:5px; min-height:24px; }"
+        "QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height:0; }"
+    ).arg(window)
+     .arg(dark ? QStringLiteral("#243653") : QStringLiteral("#d9e9fb"))
+     .arg(text).arg(surface).arg(border).arg(hover).arg(raised).arg(selection)
+     .arg(raised).arg(muted).arg(accent);
+    qApp->setStyleSheet(style);
+}
+
+void MainWindow::openAppearanceSettings()
+{
+    QSettings settings;
+    AppearanceDialog dialog(settings.value("appearance/dark", false).toBool(), this);
+    if (dialog.exec() != QDialog::Accepted)
+        return;
+    settings.setValue("appearance/dark", dialog.darkTheme());
+    applyTheme(dialog.darkTheme());
+    m_log->appendPlainText(QStringLiteral("%1 外観を%2テーマに変更しました。")
+                           .arg(actionTimestamp(), dialog.darkTheme() ? QStringLiteral("ダーク") : QStringLiteral("ライト")));
 }
 
 void MainWindow::loadProfiles()

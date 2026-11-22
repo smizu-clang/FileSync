@@ -26,6 +26,7 @@ private slots:
     void runAll();
     void runSelected();
     void runAutomaticProfiles();
+    void openAppearanceSettings();
     void plansReady();
     void syncFinished();
 
@@ -36,6 +37,7 @@ private:
     void runProfiles(const QVector<SyncProfile>& profiles, bool automatic);
     void executePendingPlans();
     void setBusy(bool busy);
+    void applyTheme(bool dark);
     QVector<SyncProfile> selectedProfiles() const;
 
     QVector<SyncProfile> m_profiles;
