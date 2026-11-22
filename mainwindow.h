@@ -12,6 +12,7 @@ class QTableWidget;
 class QPlainTextEdit;
 class QToolBar;
 class QTimer;
+class QLabel;
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -38,6 +39,7 @@ private:
     void executePendingPlans();
     void setBusy(bool busy);
     void applyTheme(bool dark);
+    void retranslateUi();
     QVector<SyncProfile> selectedProfiles() const;
 
     QVector<SyncProfile> m_profiles;
@@ -45,6 +47,8 @@ private:
     QVector<SyncPlan> m_pendingPlans;
     QTableWidget* m_table = nullptr;
     QPlainTextEdit* m_log = nullptr;
+    QLabel* m_profileHeading = nullptr;
+    QLabel* m_logHeading = nullptr;
     QToolBar* m_toolbar = nullptr;
     QTimer* m_autoTimer = nullptr;
     QFutureWatcher<QVector<SyncPlan>>* m_planWatcher = nullptr;

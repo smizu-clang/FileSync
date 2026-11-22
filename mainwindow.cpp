@@ -41,32 +41,53 @@ bool isOneWay(SyncMode mode)
     return mode == SyncMode::SourceToDestination || mode == SyncMode::DestinationToSource;
 }
 
+QString uiText(const QString& japanese, const QString& english)
+{
+    QSettings settings;
+    return settings.value(QStringLiteral("appearance/language"), QStringLiteral("ja")).toString()
+        == QStringLiteral("en") ? english : japanese;
+}
+
 class AppearanceDialog : public QDialog {
 public:
-    explicit AppearanceDialog(bool dark, QWidget* parent = nullptr)
+    explicit AppearanceDialog(bool dark, const QString& language, QWidget* parent = nullptr)
         : QDialog(parent)
     {
-        setWindowTitle(QStringLiteral("外観設定"));
+        setWindowTitle(uiText(QStringLiteral("設定"), QStringLiteral("Settings")));
         auto* layout = new QVBoxLayout(this);
-        auto* heading = new QLabel(QStringLiteral("アプリのテーマ"), this);
+        auto* heading = new QLabel(uiText(QStringLiteral("アプリのテーマ"), QStringLiteral("Appearance")), this);
         heading->setObjectName(QStringLiteral("dialogHeading"));
         layout->addWidget(heading);
-        layout->addWidget(new QLabel(QStringLiteral("ライトまたはダークの配色を選択します。"), this));
+        layout->addWidget(new QLabel(uiText(QStringLiteral("ライトまたはダークの配色を選択します。"),
+                                            QStringLiteral("Choose a light or dark color scheme.")), this));
         m_theme = new QComboBox(this);
-        m_theme->addItem(QStringLiteral("ライト"), false);
-        m_theme->addItem(QStringLiteral("ダーク"), true);
+        m_theme->addItem(uiText(QStringLiteral("ライト"), QStringLiteral("Light")), false);
+        m_theme->addItem(uiText(QStringLiteral("ダーク"), QStringLiteral("Dark")), true);
         m_theme->setCurrentIndex(dark ? 1 : 0);
+        auto* themeLabel = new QLabel(uiText(QStringLiteral("配色"), QStringLiteral("Theme")), this);
+        auto* languageLabel = new QLabel(uiText(QStringLiteral("表示言語"), QStringLiteral("Language")), this);
+        m_language = new QComboBox(this);
+        m_language->addItem(QStringLiteral("日本語"), QStringLiteral("ja"));
+        m_language->addItem(QStringLiteral("English"), QStringLiteral("en"));
+        m_language->setCurrentIndex(m_language->findData(language));
+        layout->addWidget(languageLabel);
+        layout->addWidget(m_language);
+        layout->addWidget(themeLabel);
         layout->addWidget(m_theme);
         auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
+        buttons->button(QDialogButtonBox::Ok)->setText(uiText(QStringLiteral("適用"), QStringLiteral("Apply")));
+        buttons->button(QDialogButtonBox::Cancel)->setText(uiText(QStringLiteral("キャンセル"), QStringLiteral("Cancel")));
         connect(buttons, &QDialogButtonBox::accepted, this, &QDialog::accept);
         connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
         layout->addWidget(buttons);
     }
 
     bool darkTheme() const { return m_theme->currentData().toBool(); }
+    QString language() const { return m_language->currentData().toString(); }
 
 private:
     QComboBox* m_theme = nullptr;
+    QComboBox* m_language = nullptr;
 };
 
 class ProfileDialog : public QDialog {
@@ -74,42 +95,45 @@ public:
     explicit ProfileDialog(QWidget* parent = nullptr)
         : QDialog(parent)
     {
-        setWindowTitle(QStringLiteral("同期設定"));
+        setWindowTitle(uiText(QStringLiteral("同期設定"), QStringLiteral("Sync profile")));
         auto* form = new QFormLayout(this);
         m_name = new QLineEdit(this);
         m_source = new QLineEdit(this);
         m_destination = new QLineEdit(this);
         m_mode = new QComboBox(this);
-        m_mode->addItem(QStringLiteral("更新元 → 更新先"), static_cast<int>(SyncMode::SourceToDestination));
-        m_mode->addItem(QStringLiteral("更新元 ← 更新先"), static_cast<int>(SyncMode::DestinationToSource));
-        m_mode->addItem(QStringLiteral("更新元 ←→ 更新先"), static_cast<int>(SyncMode::Bidirectional));
-        m_mode->addItem(QStringLiteral("フォルダー内の重複ファイルを削除"), static_cast<int>(SyncMode::DeleteDuplicates));
-        m_sourceLabel = new QLabel(QStringLiteral("更新元フォルダー"), this);
-        m_destinationLabel = new QLabel(QStringLiteral("更新先フォルダー"), this);
+        m_mode->addItem(uiText(QStringLiteral("更新元 → 更新先"), QStringLiteral("Source → Destination")), static_cast<int>(SyncMode::SourceToDestination));
+        m_mode->addItem(uiText(QStringLiteral("更新元 ← 更新先"), QStringLiteral("Source ← Destination")), static_cast<int>(SyncMode::DestinationToSource));
+        m_mode->addItem(uiText(QStringLiteral("更新元 ←→ 更新先"), QStringLiteral("Source ↔ Destination")), static_cast<int>(SyncMode::Bidirectional));
+        m_mode->addItem(uiText(QStringLiteral("フォルダー内の重複ファイルを削除"), QStringLiteral("Remove duplicate files in folder")), static_cast<int>(SyncMode::DeleteDuplicates));
+        m_sourceLabel = new QLabel(uiText(QStringLiteral("更新元フォルダー"), QStringLiteral("Source folder")), this);
+        m_destinationLabel = new QLabel(uiText(QStringLiteral("更新先フォルダー"), QStringLiteral("Destination folder")), this);
         m_sourceField = folderField(m_source);
         m_destinationField = folderField(m_destination);
-        m_recursive = new QCheckBox(QStringLiteral("下位フォルダーも対象にする"), this);
+        m_recursive = new QCheckBox(uiText(QStringLiteral("下位フォルダーも対象にする"), QStringLiteral("Include subfolders")), this);
         m_recursive->setChecked(true);
         m_deleteExtras = new QCheckBox(this);
-        m_automatic = new QCheckBox(QStringLiteral("定期的に自動同期する"), this);
+        m_automatic = new QCheckBox(uiText(QStringLiteral("定期的に自動同期する"), QStringLiteral("Run automatically on a schedule")), this);
         m_interval = new QSpinBox(this);
         m_interval->setRange(1, 1440);
-        m_interval->setSuffix(QStringLiteral(" 分"));
+        m_interval->setSuffix(uiText(QStringLiteral(" 分"), QStringLiteral(" min")));
         m_interval->setValue(30);
         m_extensions = new QLineEdit(this);
-        m_extensions->setPlaceholderText(QStringLiteral("例: jpg, png, pdf（空欄はすべて）"));
+        m_extensions->setPlaceholderText(uiText(QStringLiteral("例: jpg, png, pdf（空欄はすべて）"),
+                                                QStringLiteral("e.g. jpg, png, pdf (blank = all)")));
 
-        form->addRow(QStringLiteral("設定名"), m_name);
-        form->addRow(QStringLiteral("動作"), m_mode);
+        form->addRow(uiText(QStringLiteral("設定名"), QStringLiteral("Name")), m_name);
+        form->addRow(uiText(QStringLiteral("動作"), QStringLiteral("Mode")), m_mode);
         form->addRow(m_sourceLabel, m_sourceField);
         form->addRow(m_destinationLabel, m_destinationField);
         form->addRow(QString(), m_recursive);
         form->addRow(QString(), m_deleteExtras);
         form->addRow(QString(), m_automatic);
-        form->addRow(QStringLiteral("自動同期間隔"), m_interval);
-        form->addRow(QStringLiteral("拡張子フィルター"), m_extensions);
+        form->addRow(uiText(QStringLiteral("自動同期間隔"), QStringLiteral("Sync interval")), m_interval);
+        form->addRow(uiText(QStringLiteral("拡張子フィルター"), QStringLiteral("File extensions")), m_extensions);
 
         auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
+        buttons->button(QDialogButtonBox::Ok)->setText(uiText(QStringLiteral("保存"), QStringLiteral("Save")));
+        buttons->button(QDialogButtonBox::Cancel)->setText(uiText(QStringLiteral("キャンセル"), QStringLiteral("Cancel")));
         form->addRow(buttons);
         connect(buttons, &QDialogButtonBox::accepted, this, &ProfileDialog::accept);
         connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
@@ -153,17 +177,21 @@ public:
     {
         const SyncProfile value = profile();
         if (value.name.isEmpty() || value.source.isEmpty()) {
-            QMessageBox::warning(this, QStringLiteral("入力不足"),
-                                 QStringLiteral("設定名と対象フォルダーを入力してください。"));
+            QMessageBox::warning(this, uiText(QStringLiteral("入力不足"), QStringLiteral("Missing information")),
+                                 uiText(QStringLiteral("設定名と対象フォルダーを入力してください。"),
+                                        QStringLiteral("Enter a name and select a folder.")));
             return;
         }
         if (!QFileInfo(value.source).isDir()) {
-            QMessageBox::warning(this, QStringLiteral("フォルダーを確認"),
-                                 QStringLiteral("更新元または対象フォルダーを選択してください。"));
+            QMessageBox::warning(this, uiText(QStringLiteral("フォルダーを確認"), QStringLiteral("Check folder")),
+                                 uiText(QStringLiteral("更新元または対象フォルダーを選択してください。"),
+                                        QStringLiteral("Select a source or target folder.")));
             return;
         }
         if (value.mode != SyncMode::DeleteDuplicates && value.destination.isEmpty()) {
-            QMessageBox::warning(this, QStringLiteral("入力不足"), QStringLiteral("更新先フォルダーを選択してください。"));
+            QMessageBox::warning(this, uiText(QStringLiteral("入力不足"), QStringLiteral("Missing information")),
+                                 uiText(QStringLiteral("更新先フォルダーを選択してください。"),
+                                        QStringLiteral("Select a destination folder.")));
             return;
         }
         QDialog::accept();
@@ -175,11 +203,12 @@ private:
         auto* row = new QWidget(this);
         auto* layout = new QHBoxLayout(row);
         layout->setContentsMargins(0, 0, 0, 0);
-        auto* browse = new QPushButton(QStringLiteral("参照…"), row);
+        auto* browse = new QPushButton(uiText(QStringLiteral("参照…"), QStringLiteral("Browse…")), row);
         layout->addWidget(edit, 1);
         layout->addWidget(browse);
         connect(browse, &QPushButton::clicked, this, [this, edit]() {
-            const QString selected = QFileDialog::getExistingDirectory(this, QStringLiteral("フォルダーを選択"), edit->text());
+            const QString selected = QFileDialog::getExistingDirectory(this,
+                uiText(QStringLiteral("フォルダーを選択"), QStringLiteral("Select folder")), edit->text());
             if (!selected.isEmpty())
                 edit->setText(selected);
         });
@@ -190,15 +219,20 @@ private:
     {
         const SyncMode mode = static_cast<SyncMode>(m_mode->currentData().toInt());
         const bool duplicates = mode == SyncMode::DeleteDuplicates;
-        m_sourceLabel->setText(duplicates ? QStringLiteral("対象フォルダー") : QStringLiteral("更新元フォルダー"));
+        m_sourceLabel->setText(duplicates
+            ? uiText(QStringLiteral("対象フォルダー"), QStringLiteral("Folder to scan"))
+            : uiText(QStringLiteral("更新元フォルダー"), QStringLiteral("Source folder")));
         m_destinationLabel->setVisible(!duplicates);
         m_destinationField->setVisible(!duplicates);
         m_deleteExtras->setEnabled(isOneWay(mode));
         m_deleteExtras->setText(mode == SyncMode::DestinationToSource
-            ? QStringLiteral("更新元だけにある対象ファイルを削除する（ミラー）")
-            : QStringLiteral("更新先だけにある対象ファイルを削除する（ミラー）"));
-        m_recursive->setText(duplicates ? QStringLiteral("下位フォルダーも重複判定する")
-                                        : QStringLiteral("下位フォルダーも対象にする"));
+            ? uiText(QStringLiteral("更新元だけにある対象ファイルを削除する（ミラー）"),
+                     QStringLiteral("Delete files found only in the source (mirror)"))
+            : uiText(QStringLiteral("更新先だけにある対象ファイルを削除する（ミラー）"),
+                     QStringLiteral("Delete files found only in the destination (mirror)")));
+        m_recursive->setText(duplicates
+            ? uiText(QStringLiteral("下位フォルダーも重複判定する"), QStringLiteral("Check subfolders for duplicates"))
+            : uiText(QStringLiteral("下位フォルダーも対象にする"), QStringLiteral("Include subfolders")));
     }
 
     QLineEdit* m_name = nullptr;
@@ -221,7 +255,7 @@ public:
     PreviewDialog(const QVector<SyncPlan>& plans, QWidget* parent = nullptr)
         : QDialog(parent)
     {
-        setWindowTitle(QStringLiteral("同期内容の確認"));
+        setWindowTitle(uiText(QStringLiteral("同期内容の確認"), QStringLiteral("Review sync changes")));
         resize(1000, 520);
         auto* layout = new QVBoxLayout(this);
         int copies = 0;
@@ -236,14 +270,17 @@ public:
                 issues += action.kind == SyncActionKind::Error || action.kind == SyncActionKind::Conflict;
             }
         }
-        auto* summary = new QLabel(QStringLiteral("コピー/更新: %1　削除: %2　競合/エラー: %3")
+        auto* summary = new QLabel(uiText(QStringLiteral("コピー/更新: %1　削除: %2　競合/エラー: %3"),
+                                            QStringLiteral("Copy/update: %1   Delete: %2   Conflicts/errors: %3"))
                                    .arg(copies).arg(deletions).arg(issues), this);
         layout->addWidget(summary);
 
         auto* table = new QTableWidget(rows, 5, this);
-        table->setHorizontalHeaderLabels({QStringLiteral("設定"), QStringLiteral("処理"),
-                                          QStringLiteral("更新元 / 残すファイル"),
-                                          QStringLiteral("更新先 / 削除対象"), QStringLiteral("詳細")});
+        table->setHorizontalHeaderLabels({uiText(QStringLiteral("設定"), QStringLiteral("Profile")),
+                                          uiText(QStringLiteral("処理"), QStringLiteral("Action")),
+                                          uiText(QStringLiteral("更新元 / 残すファイル"), QStringLiteral("Source / Keep")),
+                                          uiText(QStringLiteral("更新先 / 削除対象"), QStringLiteral("Destination / Delete")),
+                                          uiText(QStringLiteral("詳細"), QStringLiteral("Details"))});
         table->setEditTriggers(QAbstractItemView::NoEditTriggers);
         table->setSelectionBehavior(QAbstractItemView::SelectRows);
         table->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
@@ -265,8 +302,10 @@ public:
         layout->addWidget(table, 1);
 
         auto* buttons = new QDialogButtonBox(this);
-        auto* cancel = buttons->addButton(QStringLiteral("キャンセル"), QDialogButtonBox::RejectRole);
-        auto* apply = buttons->addButton(deletions ? QStringLiteral("削除を含めて実行") : QStringLiteral("実行"),
+        auto* cancel = buttons->addButton(uiText(QStringLiteral("キャンセル"), QStringLiteral("Cancel")), QDialogButtonBox::RejectRole);
+        auto* apply = buttons->addButton(deletions
+                                            ? uiText(QStringLiteral("削除を含めて実行"), QStringLiteral("Apply, including deletions"))
+                                            : uiText(QStringLiteral("実行"), QStringLiteral("Run")),
                                          QDialogButtonBox::AcceptRole);
         apply->setEnabled(copies + deletions > 0);
         connect(cancel, &QPushButton::clicked, this, &QDialog::reject);
@@ -325,27 +364,24 @@ MainWindow::MainWindow(QWidget* parent)
     m_toolbar = addToolBar(QStringLiteral("同期"));
     m_toolbar->setMovable(false);
     m_toolbar->setFloatable(false);
-    m_toolbar->addAction(QStringLiteral("追加"), this, &MainWindow::addProfile);
-    m_toolbar->addAction(QStringLiteral("編集"), this, &MainWindow::editProfile);
-    m_toolbar->addAction(QStringLiteral("削除"), this, &MainWindow::removeProfile);
+    m_toolbar->addAction(QString(), this, &MainWindow::addProfile);
+    m_toolbar->addAction(QString(), this, &MainWindow::editProfile);
+    m_toolbar->addAction(QString(), this, &MainWindow::removeProfile);
     m_toolbar->addSeparator();
-    m_toolbar->addAction(QStringLiteral("選択を同期"), this, &MainWindow::runSelected);
-    m_toolbar->addAction(QStringLiteral("すべて同期"), this, &MainWindow::runAll);
+    m_toolbar->addAction(QString(), this, &MainWindow::runSelected);
+    m_toolbar->addAction(QString(), this, &MainWindow::runAll);
     m_toolbar->addSeparator();
-    m_toolbar->addAction(QStringLiteral("外観"), this, &MainWindow::openAppearanceSettings);
+    m_toolbar->addAction(QString(), this, &MainWindow::openAppearanceSettings);
 
     auto* central = new QWidget(this);
     auto* layout = new QVBoxLayout(central);
     layout->setContentsMargins(22, 18, 22, 20);
     layout->setSpacing(14);
-    auto* profileHeading = new QLabel(QStringLiteral("同期プロファイル"), central);
-    profileHeading->setObjectName(QStringLiteral("sectionHeading"));
-    layout->addWidget(profileHeading);
+    m_profileHeading = new QLabel(central);
+    m_profileHeading->setObjectName(QStringLiteral("sectionHeading"));
+    layout->addWidget(m_profileHeading);
     m_table = new QTableWidget(0, 5, central);
     m_table->setObjectName(QStringLiteral("profileTable"));
-    m_table->setHorizontalHeaderLabels({QStringLiteral("設定名"), QStringLiteral("同期の種類"),
-                                        QStringLiteral("更新元"), QStringLiteral("更新先"),
-                                        QStringLiteral("自動")});
     m_table->setSelectionBehavior(QAbstractItemView::SelectRows);
     m_table->setSelectionMode(QAbstractItemView::ExtendedSelection);
     m_table->setEditTriggers(QAbstractItemView::NoEditTriggers);
@@ -357,15 +393,16 @@ MainWindow::MainWindow(QWidget* parent)
     connect(m_table, &QTableWidget::cellDoubleClicked, this, &MainWindow::editProfile);
     layout->addWidget(m_table, 3);
 
-    auto* logHeading = new QLabel(QStringLiteral("アクティビティ"), central);
-    logHeading->setObjectName(QStringLiteral("sectionHeading"));
-    layout->addWidget(logHeading);
+    m_logHeading = new QLabel(central);
+    m_logHeading->setObjectName(QStringLiteral("sectionHeading"));
+    layout->addWidget(m_logHeading);
     m_log = new QPlainTextEdit(central);
     m_log->setObjectName(QStringLiteral("activityLog"));
     m_log->setReadOnly(true);
     layout->addWidget(m_log, 2);
     setCentralWidget(central);
 
+    retranslateUi();
     loadProfiles();
     refreshTable();
     connect(m_planWatcher, &QFutureWatcher<QVector<SyncPlan>>::finished, this, &MainWindow::plansReady);
@@ -375,6 +412,27 @@ MainWindow::MainWindow(QWidget* parent)
     m_autoTimer->setInterval(60 * 1000);
     connect(m_autoTimer, &QTimer::timeout, this, &MainWindow::runAutomaticProfiles);
     m_autoTimer->start();
+}
+
+void MainWindow::retranslateUi()
+{
+    const QList<QAction*> actions = m_toolbar->actions();
+    if (actions.size() >= 8) {
+        actions[0]->setText(uiText(QStringLiteral("追加"), QStringLiteral("Add")));
+        actions[1]->setText(uiText(QStringLiteral("編集"), QStringLiteral("Edit")));
+        actions[2]->setText(uiText(QStringLiteral("削除"), QStringLiteral("Remove")));
+        actions[4]->setText(uiText(QStringLiteral("選択を同期"), QStringLiteral("Sync selected")));
+        actions[5]->setText(uiText(QStringLiteral("すべて同期"), QStringLiteral("Sync all")));
+        actions[7]->setText(uiText(QStringLiteral("設定"), QStringLiteral("Settings")));
+    }
+    m_profileHeading->setText(uiText(QStringLiteral("同期プロファイル"), QStringLiteral("Sync profiles")));
+    m_logHeading->setText(uiText(QStringLiteral("アクティビティ"), QStringLiteral("Activity")));
+    m_table->setHorizontalHeaderLabels({uiText(QStringLiteral("設定名"), QStringLiteral("Name")),
+                                        uiText(QStringLiteral("同期の種類"), QStringLiteral("Sync mode")),
+                                        uiText(QStringLiteral("更新元"), QStringLiteral("Source")),
+                                        uiText(QStringLiteral("更新先"), QStringLiteral("Destination")),
+                                        uiText(QStringLiteral("自動"), QStringLiteral("Schedule"))});
+    refreshTable();
 }
 
 void MainWindow::applyTheme(bool dark)
@@ -403,7 +461,7 @@ void MainWindow::applyTheme(bool dark)
 
     const QString style = QStringLiteral(
         "QMainWindow { background: qlineargradient(x1:0,y1:0,x2:1,y2:1, stop:0 %1, stop:1 %2); }"
-        "QWidget { color:%3; font-family:'Noto Sans'; font-size:10pt; }"
+        "QWidget { color:%3; font-size:10pt; }"
         "QToolBar { background:%4; border:1px solid %5; border-radius:14px; spacing:7px; padding:8px 12px; margin:12px 16px 0 16px; }"
         "QToolButton { background:transparent; border:1px solid transparent; border-radius:9px; padding:8px 12px; }"
         "QToolButton:hover { background:%6; border-color:%5; }"
@@ -432,13 +490,18 @@ void MainWindow::applyTheme(bool dark)
 void MainWindow::openAppearanceSettings()
 {
     QSettings settings;
-    AppearanceDialog dialog(settings.value("appearance/dark", false).toBool(), this);
+    AppearanceDialog dialog(settings.value("appearance/dark", false).toBool(),
+                             settings.value("appearance/language", QStringLiteral("ja")).toString(), this);
     if (dialog.exec() != QDialog::Accepted)
         return;
     settings.setValue("appearance/dark", dialog.darkTheme());
+    settings.setValue("appearance/language", dialog.language());
     applyTheme(dialog.darkTheme());
-    m_log->appendPlainText(QStringLiteral("%1 外観を%2テーマに変更しました。")
-                           .arg(actionTimestamp(), dialog.darkTheme() ? QStringLiteral("ダーク") : QStringLiteral("ライト")));
+    retranslateUi();
+    m_log->appendPlainText(uiText(QStringLiteral("%1 外観を%2テーマに変更しました。")
+                                      .arg(actionTimestamp(), dialog.darkTheme() ? QStringLiteral("ダーク") : QStringLiteral("ライト")),
+                                  QStringLiteral("%1 Appearance changed to %2 theme.")
+                                      .arg(actionTimestamp(), dialog.darkTheme() ? QStringLiteral("dark") : QStringLiteral("light"))));
 }
 
 void MainWindow::loadProfiles()
@@ -469,7 +532,9 @@ void MainWindow::refreshTable()
         m_table->setItem(row, 2, new QTableWidgetItem(profile.source));
         m_table->setItem(row, 3, new QTableWidgetItem(profile.mode == SyncMode::DeleteDuplicates
                                                         ? QStringLiteral("—") : profile.destination));
-        m_table->setItem(row, 4, new QTableWidgetItem(profile.automatic ? QStringLiteral("有効") : QStringLiteral("無効")));
+        m_table->setItem(row, 4, new QTableWidgetItem(profile.automatic
+            ? uiText(QStringLiteral("有効"), QStringLiteral("On"))
+            : uiText(QStringLiteral("無効"), QStringLiteral("Off"))));
     }
 }
 
@@ -503,8 +568,9 @@ void MainWindow::removeProfile()
     const int row = m_table->currentRow();
     if (row < 0 || row >= m_profiles.size())
         return;
-    if (QMessageBox::question(this, QStringLiteral("設定を削除"),
-                              QStringLiteral("選択した同期設定を削除しますか？")) != QMessageBox::Yes)
+    if (QMessageBox::question(this, uiText(QStringLiteral("設定を削除"), QStringLiteral("Remove profile")),
+                              uiText(QStringLiteral("選択した同期設定を削除しますか？"),
+                                     QStringLiteral("Remove the selected sync profile?"))) != QMessageBox::Yes)
         return;
     m_profiles.removeAt(row);
     m_lastAutomaticRun.removeAt(row);
@@ -533,7 +599,9 @@ void MainWindow::runSelected()
 {
     const QVector<SyncProfile> selected = selectedProfiles();
     if (selected.isEmpty()) {
-        QMessageBox::information(this, QStringLiteral("同期設定"), QStringLiteral("同期する設定を選択してください。"));
+        QMessageBox::information(this, uiText(QStringLiteral("同期設定"), QStringLiteral("Sync profile")),
+                                 uiText(QStringLiteral("同期する設定を選択してください。"),
+                                        QStringLiteral("Select a profile to sync.")));
         return;
     }
     runProfiles(selected, false);
@@ -564,7 +632,8 @@ void MainWindow::runProfiles(const QVector<SyncProfile>& profiles, bool automati
     if (m_planWatcher->isRunning() || m_runWatcher->isRunning())
         return;
     m_pendingAutomatic = automatic;
-    m_log->appendPlainText(QStringLiteral("%1 同期内容を確認中…").arg(actionTimestamp()));
+    m_log->appendPlainText(uiText(QStringLiteral("%1 同期内容を確認中…").arg(actionTimestamp()),
+                                  QStringLiteral("%1 Reviewing sync changes…").arg(actionTimestamp())));
     setBusy(true);
     const QVector<SyncProfile> jobs = profiles;
     m_planWatcher->setFuture(QtConcurrent::run([jobs]() {
@@ -581,15 +650,18 @@ void MainWindow::plansReady()
     m_pendingPlans = m_planWatcher->result();
     int plannedActions = 0;
     for (const SyncPlan& plan : m_pendingPlans) {
-        m_log->appendPlainText(QStringLiteral("%1 %2: %3").arg(actionTimestamp(), plan.profileName,
-                                             SyncEngine::modeName(plan.mode)));
+        m_log->appendPlainText(uiText(QStringLiteral("%1 %2: %3").arg(actionTimestamp(), plan.profileName,
+                                                                           SyncEngine::modeName(plan.mode)),
+                                      QStringLiteral("%1 %2: %3").arg(actionTimestamp(), plan.profileName,
+                                                                          SyncEngine::modeName(plan.mode))));
         for (const SyncAction& action : plan.actions) {
             if (action.kind == SyncActionKind::Error || action.kind == SyncActionKind::Conflict)
                 m_log->appendPlainText(QStringLiteral("%1 %2").arg(actionTimestamp(), SyncEngine::logLine(action)));
             plannedActions += action.kind == SyncActionKind::Copy || action.kind == SyncActionKind::Delete;
         }
         if (plan.actions.isEmpty())
-            m_log->appendPlainText(QStringLiteral("%1 変更対象はありません").arg(actionTimestamp()));
+            m_log->appendPlainText(uiText(QStringLiteral("%1 変更対象はありません").arg(actionTimestamp()),
+                                          QStringLiteral("%1 Nothing to sync.").arg(actionTimestamp())));
     }
 
     if (plannedActions == 0) {
@@ -605,7 +677,8 @@ void MainWindow::plansReady()
     if (preview.exec() == QDialog::Accepted) {
         executePendingPlans();
     } else {
-        m_log->appendPlainText(QStringLiteral("%1 ユーザーが同期をキャンセルしました").arg(actionTimestamp()));
+        m_log->appendPlainText(uiText(QStringLiteral("%1 ユーザーが同期をキャンセルしました").arg(actionTimestamp()),
+                                      QStringLiteral("%1 Sync was canceled.").arg(actionTimestamp())));
         setBusy(false);
     }
 }

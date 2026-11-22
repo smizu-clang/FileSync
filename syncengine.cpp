@@ -10,10 +10,18 @@ import std;
 #include <QFileInfo>
 #include <QRegularExpression>
 #include <QSaveFile>
+#include <QSettings>
 
 namespace {
 
 using FileMap = std::map<QString, QFileInfo>;
+
+QString uiText(const QString& japanese, const QString& english)
+{
+    QSettings settings;
+    return settings.value(QStringLiteral("appearance/language"), QStringLiteral("ja")).toString()
+        == QStringLiteral("en") ? english : japanese;
+}
 
 QString normalizedPath(const QString& path)
 {
@@ -61,7 +69,8 @@ FileMap scan(const QString& root, bool recursive, QStringList& errors)
             continue;
         if (info.isDir()) {
             if (recursive && !info.isReadable())
-                errors << QStringLiteral("フォルダーを読み取れません: %1").arg(path);
+                errors << uiText(QStringLiteral("フォルダーを読み取れません: %1"),
+                                 QStringLiteral("Cannot read folder: %1")).arg(path);
             continue;
         }
         if (!info.isFile())
@@ -104,19 +113,20 @@ SyncAction copyAction(const QString& source, const QString& destination)
 {
     const QByteArray sourceDigest = digest(source);
     if (sourceDigest.isEmpty())
-        return errorAction(QStringLiteral("更新元ファイルを読み込めません"), source, destination);
+        return errorAction(uiText(QStringLiteral("更新元ファイルを読み込めません"), QStringLiteral("Cannot read source file")), source, destination);
 
     const QFileInfo destinationInfo(destination);
     if (destinationInfo.isSymLink() || (destinationInfo.exists() && !destinationInfo.isFile()))
-        return errorAction(QStringLiteral("更新先が通常ファイルではありません"), source, destination);
+        return errorAction(uiText(QStringLiteral("更新先が通常ファイルではありません"), QStringLiteral("Destination is not a regular file")), source, destination);
 
     QByteArray destinationDigest;
     if (destinationInfo.exists()) {
         destinationDigest = digest(destination);
         if (destinationDigest.isEmpty())
-            return errorAction(QStringLiteral("更新先ファイルを読み込めません"), source, destination);
+            return errorAction(uiText(QStringLiteral("更新先ファイルを読み込めません"), QStringLiteral("Cannot read destination file")), source, destination);
     }
-    return {SyncActionKind::Copy, source, destination, QStringLiteral("ファイルをコピーまたは更新"),
+    return {SyncActionKind::Copy, source, destination,
+            uiText(QStringLiteral("ファイルをコピーまたは更新"), QStringLiteral("Copy or update file")),
             sourceDigest, destinationDigest};
 }
 
@@ -147,10 +157,12 @@ void addOneWayActions(SyncPlan& result, const QString& sourceRoot, const QString
             continue;
         const QByteArray expected = digest(info.absoluteFilePath());
         if (expected.isEmpty()) {
-            result.actions.push_back(errorAction(QStringLiteral("削除対象を読み込めません"), {}, info.absoluteFilePath()));
+            result.actions.push_back(errorAction(uiText(QStringLiteral("削除対象を読み込めません"),
+                                                     QStringLiteral("Cannot read file to delete")), {}, info.absoluteFilePath()));
         } else {
             result.actions.push_back({SyncActionKind::Delete, {}, info.absoluteFilePath(),
-                                     QStringLiteral("ミラー設定により余分なファイルを削除"), {}, expected});
+                                     uiText(QStringLiteral("ミラー設定により余分なファイルを削除"),
+                                            QStringLiteral("Delete extra file for mirror")), {}, expected});
         }
     }
 }
@@ -196,7 +208,8 @@ void addBidirectionalActions(SyncPlan& result, const QString& sourceRoot, const 
                 result.actions.push_back(copyAction(destinationPath, sourcePath));
             else
                 result.actions.push_back({SyncActionKind::Conflict, sourcePath, destinationPath,
-                                          QStringLiteral("更新日時が同じで内容が異なります"), {}, {}});
+                                          uiText(QStringLiteral("更新日時が同じで内容が異なります"),
+                                                 QStringLiteral("Timestamps match but contents differ")), {}, {}});
         }
     }
 }
@@ -218,7 +231,8 @@ void addDuplicateDeletionActions(SyncPlan& result, const QString& root, const Sy
             continue;
         const QByteArray fileDigest = digest(info.absoluteFilePath());
         if (fileDigest.isEmpty()) {
-            result.actions.push_back(errorAction(QStringLiteral("重複判定のためにファイルを読み込めません"),
+            result.actions.push_back(errorAction(uiText(QStringLiteral("重複判定のためにファイルを読み込めません"),
+                                                  QStringLiteral("Cannot read file to check for duplicates")),
                                                  info.absoluteFilePath()));
             digestError = true;
             continue;
@@ -236,7 +250,8 @@ void addDuplicateDeletionActions(SyncPlan& result, const QString& root, const Sy
         const QString retainedPath = paths.front();
         for (qsizetype index = 1; index < paths.size(); ++index) {
             result.actions.push_back({SyncActionKind::Delete, retainedPath, paths[index],
-                                      QStringLiteral("内容が一致する重複ファイルを削除"),
+                                      uiText(QStringLiteral("内容が一致する重複ファイルを削除"),
+                                             QStringLiteral("Delete duplicate with identical contents")),
                                       fileDigest, digest(paths[index])});
         }
     }
@@ -246,9 +261,9 @@ QString errorText(const QString& message, const QString& source, const QString& 
 {
     QStringList fields;
     if (!source.isEmpty())
-        fields << QStringLiteral("更新元: %1").arg(source);
+        fields << uiText(QStringLiteral("更新元: %1"), QStringLiteral("Source: %1")).arg(source);
     if (!destination.isEmpty())
-        fields << QStringLiteral("更新先: %1").arg(destination);
+        fields << uiText(QStringLiteral("更新先: %1"), QStringLiteral("Destination: %1")).arg(destination);
     fields << message;
     return fields.join(QStringLiteral(" | "));
 }
@@ -256,51 +271,51 @@ QString errorText(const QString& message, const QString& source, const QString& 
 QString executeCopy(const SyncAction& action)
 {
     if (digest(action.source) != action.expectedSourceDigest)
-        return QStringLiteral("実行前に更新元が変わったためコピーを中止");
+        return uiText(QStringLiteral("実行前に更新元が変わったためコピーを中止"), QStringLiteral("Copy canceled because the source changed after preview"));
 
     const QFileInfo destinationInfo(action.destination);
     if (destinationInfo.isSymLink() || (destinationInfo.exists() && !destinationInfo.isFile()))
-        return QStringLiteral("更新先が通常ファイルではないためコピーを中止");
+        return uiText(QStringLiteral("更新先が通常ファイルではないためコピーを中止"), QStringLiteral("Copy canceled because destination is not a regular file"));
     if (destinationInfo.exists() && digest(action.destination) != action.expectedDestinationDigest)
-        return QStringLiteral("プレビュー後に更新先が変わったためコピーを中止");
+        return uiText(QStringLiteral("プレビュー後に更新先が変わったためコピーを中止"), QStringLiteral("Copy canceled because destination changed after preview"));
 
     if (!QDir().mkpath(QFileInfo(action.destination).absolutePath()))
-        return QStringLiteral("更新先フォルダーを作成できません");
+        return uiText(QStringLiteral("更新先フォルダーを作成できません"), QStringLiteral("Cannot create destination folder"));
 
     QFile input(action.source);
     if (!input.open(QIODevice::ReadOnly))
-        return QStringLiteral("更新元ファイルを開けません");
+        return uiText(QStringLiteral("更新元ファイルを開けません"), QStringLiteral("Cannot open source file"));
     QSaveFile output(action.destination);
     if (!output.open(QIODevice::WriteOnly))
-        return QStringLiteral("更新先ファイルを開けません");
+        return uiText(QStringLiteral("更新先ファイルを開けません"), QStringLiteral("Cannot open destination file"));
     while (!input.atEnd()) {
         const QByteArray chunk = input.read(1024 * 1024);
         if ((chunk.isEmpty() && input.error() != QFileDevice::NoError)
             || output.write(chunk) != chunk.size()) {
             output.cancelWriting();
-            return QStringLiteral("ファイルのコピーに失敗しました");
+            return uiText(QStringLiteral("ファイルのコピーに失敗しました"), QStringLiteral("Failed to copy file"));
         }
     }
     if (!output.commit())
-        return QStringLiteral("更新先への保存に失敗しました");
+        return uiText(QStringLiteral("更新先への保存に失敗しました"), QStringLiteral("Failed to save to destination"));
 
     QFile copied(action.destination);
     if (copied.open(QIODevice::ReadWrite)) {
         copied.setFileTime(QFileInfo(action.source).lastModified(), QFileDevice::FileModificationTime);
         copied.close();
     }
-    return QStringLiteral("コピーしました");
+    return uiText(QStringLiteral("コピーしました"), QStringLiteral("Copied"));
 }
 
 QString executeDelete(const SyncAction& action)
 {
     if (!action.source.isEmpty() && digest(action.source) != action.expectedSourceDigest)
-        return QStringLiteral("残すファイルがプレビュー後に変わったため削除を中止");
+        return uiText(QStringLiteral("残すファイルがプレビュー後に変わったため削除を中止"), QStringLiteral("Deletion canceled because the retained file changed after preview"));
     if (digest(action.destination) != action.expectedDestinationDigest)
-        return QStringLiteral("プレビュー後に削除対象が変わったため削除を中止");
+        return uiText(QStringLiteral("プレビュー後に削除対象が変わったため削除を中止"), QStringLiteral("Deletion canceled because the target changed after preview"));
     if (!QFile::remove(action.destination))
-        return QStringLiteral("ファイルを削除できません");
-    return QStringLiteral("削除しました");
+        return uiText(QStringLiteral("ファイルを削除できません"), QStringLiteral("Cannot delete file"));
+    return uiText(QStringLiteral("削除しました"), QStringLiteral("Deleted"));
 }
 
 } // namespace
@@ -308,23 +323,23 @@ QString executeDelete(const SyncAction& action)
 QString SyncEngine::modeName(SyncMode mode)
 {
     switch (mode) {
-    case SyncMode::SourceToDestination: return QStringLiteral("更新元 → 更新先");
-    case SyncMode::DestinationToSource: return QStringLiteral("更新元 ← 更新先");
-    case SyncMode::Bidirectional: return QStringLiteral("更新元 ←→ 更新先");
-    case SyncMode::DeleteDuplicates: return QStringLiteral("フォルダー内重複削除");
+    case SyncMode::SourceToDestination: return uiText(QStringLiteral("更新元 → 更新先"), QStringLiteral("Source → Destination"));
+    case SyncMode::DestinationToSource: return uiText(QStringLiteral("更新元 ← 更新先"), QStringLiteral("Source ← Destination"));
+    case SyncMode::Bidirectional: return uiText(QStringLiteral("更新元 ←→ 更新先"), QStringLiteral("Source ↔ Destination"));
+    case SyncMode::DeleteDuplicates: return uiText(QStringLiteral("フォルダー内重複削除"), QStringLiteral("Remove folder duplicates"));
     }
-    return QStringLiteral("不明");
+    return uiText(QStringLiteral("不明"), QStringLiteral("Unknown"));
 }
 
 QString SyncEngine::actionName(SyncActionKind kind)
 {
     switch (kind) {
-    case SyncActionKind::Copy: return QStringLiteral("コピー/更新");
-    case SyncActionKind::Delete: return QStringLiteral("削除");
-    case SyncActionKind::Conflict: return QStringLiteral("競合");
-    case SyncActionKind::Error: return QStringLiteral("エラー");
+    case SyncActionKind::Copy: return uiText(QStringLiteral("コピー/更新"), QStringLiteral("Copy/update"));
+    case SyncActionKind::Delete: return uiText(QStringLiteral("削除"), QStringLiteral("Delete"));
+    case SyncActionKind::Conflict: return uiText(QStringLiteral("競合"), QStringLiteral("Conflict"));
+    case SyncActionKind::Error: return uiText(QStringLiteral("エラー"), QStringLiteral("Error"));
     }
-    return QStringLiteral("不明");
+    return uiText(QStringLiteral("不明"), QStringLiteral("Unknown"));
 }
 
 QString SyncEngine::logLine(const SyncAction& action)
@@ -343,11 +358,11 @@ SyncPlan SyncEngine::plan(const SyncProfile& profile)
     const QStringList extensions = extensionFilters(profile.extensions);
     const QFileInfo sourceInfo(sourceRoot);
     if (!sourceInfo.exists() || !sourceInfo.isDir()) {
-        result.actions.push_back(errorAction(QStringLiteral("更新元フォルダーがありません"), sourceRoot));
+        result.actions.push_back(errorAction(uiText(QStringLiteral("更新元フォルダーがありません"), QStringLiteral("Source folder does not exist")), sourceRoot));
         return result;
     }
     if (!sourceInfo.isReadable()) {
-        result.actions.push_back(errorAction(QStringLiteral("更新元フォルダーを読み取れません"), sourceRoot));
+        result.actions.push_back(errorAction(uiText(QStringLiteral("更新元フォルダーを読み取れません"), QStringLiteral("Cannot read source folder")), sourceRoot));
         return result;
     }
 
@@ -359,16 +374,17 @@ SyncPlan SyncEngine::plan(const SyncProfile& profile)
     const QString destinationRoot = normalizedPath(profile.destination);
     const QFileInfo destinationInfo(destinationRoot);
     if (profile.destination.trimmed().isEmpty() || (destinationInfo.exists() && !destinationInfo.isDir())) {
-        result.actions.push_back(errorAction(QStringLiteral("更新先フォルダーが正しくありません"), sourceRoot, destinationRoot));
+        result.actions.push_back(errorAction(uiText(QStringLiteral("更新先フォルダーが正しくありません"), QStringLiteral("Invalid destination folder")), sourceRoot, destinationRoot));
         return result;
     }
     if (destinationInfo.exists() && !destinationInfo.isReadable()) {
-        result.actions.push_back(errorAction(QStringLiteral("更新先フォルダーを読み取れません"), sourceRoot, destinationRoot));
+        result.actions.push_back(errorAction(uiText(QStringLiteral("更新先フォルダーを読み取れません"), QStringLiteral("Cannot read destination folder")), sourceRoot, destinationRoot));
         return result;
     }
     if (sourceRoot == destinationRoot || isWithin(sourceRoot, destinationRoot)
         || isWithin(destinationRoot, sourceRoot)) {
-        result.actions.push_back(errorAction(QStringLiteral("更新元と更新先は別々のフォルダーにしてください"),
+        result.actions.push_back(errorAction(uiText(QStringLiteral("更新元と更新先は別々のフォルダーにしてください"),
+                                                 QStringLiteral("Source and destination must be different folders")),
                                              sourceRoot, destinationRoot));
         return result;
     }
@@ -392,24 +408,24 @@ SyncPlan SyncEngine::plan(const SyncProfile& profile)
 QStringList SyncEngine::execute(const SyncPlan& plan)
 {
     QStringList log;
-    log << QStringLiteral("[%1] %2: 同期開始 (%3)")
+    log << uiText(QStringLiteral("[%1] %2: 同期開始 (%3)"), QStringLiteral("[%1] %2: Sync started (%3)"))
         .arg(QDateTime::currentDateTime().toString(Qt::ISODate), plan.profileName, modeName(plan.mode));
     for (const SyncAction& action : plan.actions) {
         if (action.kind == SyncActionKind::Copy) {
             const QString outcome = executeCopy(action);
             const QString type = outcome == QStringLiteral("コピーしました")
-                ? actionName(action.kind) : QStringLiteral("エラー");
+                ? actionName(action.kind) : uiText(QStringLiteral("エラー"), QStringLiteral("Error"));
             log << QStringLiteral("%1 | %2").arg(type, errorText(outcome, action.source, action.destination));
         } else if (action.kind == SyncActionKind::Delete) {
             const QString outcome = executeDelete(action);
             const QString type = outcome == QStringLiteral("削除しました")
-                ? actionName(action.kind) : QStringLiteral("エラー");
+                ? actionName(action.kind) : uiText(QStringLiteral("エラー"), QStringLiteral("Error"));
             log << QStringLiteral("%1 | %2").arg(type, errorText(outcome, action.source, action.destination));
         } else {
             log << logLine(action);
         }
     }
-    log << QStringLiteral("[%1] %2: 同期終了")
+    log << uiText(QStringLiteral("[%1] %2: 同期終了"), QStringLiteral("[%1] %2: Sync finished"))
         .arg(QDateTime::currentDateTime().toString(Qt::ISODate), plan.profileName);
     return log;
 }
