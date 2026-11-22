@@ -1,4 +1,9 @@
+#if defined(FILESYNC_USE_STD_MODULES) && FILESYNC_USE_STD_MODULES
 import std;
+#else
+#include <map>
+#include <set>
+#endif
 
 #include "syncengine.h"
 
