@@ -40,6 +40,8 @@ Tags:
   - synchronization
   - backup
   - qt
+ManifestType: locale
+ManifestVersion: $manifestVersion
 "@
 
 $englishLocale = @"
@@ -62,6 +64,8 @@ Tags:
   - synchronization
   - backup
   - qt
+ManifestType: locale
+ManifestVersion: $manifestVersion
 "@
 
 $installerManifest = @"
