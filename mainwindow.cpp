@@ -1,6 +1,7 @@
 #include "mainwindow.h"
 
 #include <QAbstractItemView>
+#include <algorithm>
 #include <QApplication>
 #include <QCheckBox>
 #include <QColor>
@@ -47,6 +48,8 @@ QString uiText(const QString& japanese, const QString& english)
     return settings.value(QStringLiteral("appearance/language"), QStringLiteral("ja")).toString()
         == QStringLiteral("en") ? english : japanese;
 }
+
+QString formatBytes(qint64 bytes);
 
 class AppearanceDialog : public QDialog {
 public:
@@ -262,17 +265,25 @@ public:
         int deletions = 0;
         int issues = 0;
         int rows = 0;
+        qint64 copyBytes = 0;
+        qint64 deleteBytes = 0;
         for (const SyncPlan& plan : plans) {
             rows += plan.actions.size();
             for (const SyncAction& action : plan.actions) {
                 copies += action.kind == SyncActionKind::Copy;
                 deletions += action.kind == SyncActionKind::Delete;
                 issues += action.kind == SyncActionKind::Error || action.kind == SyncActionKind::Conflict;
+                if (action.kind == SyncActionKind::Copy)
+                    copyBytes += std::max<qint64>(0, QFileInfo(action.source).size());
+                else if (action.kind == SyncActionKind::Delete)
+                    deleteBytes += std::max<qint64>(0, QFileInfo(action.destination).size());
             }
         }
-        auto* summary = new QLabel(uiText(QStringLiteral("コピー/更新: %1　削除: %2　競合/エラー: %3"),
-                                            QStringLiteral("Copy/update: %1   Delete: %2   Conflicts/errors: %3"))
-                                   .arg(copies).arg(deletions).arg(issues), this);
+        auto* summary = new QLabel(uiText(
+            QStringLiteral("コピー/更新 %1件（%2）　削除 %3件（%4）　競合/エラー %5件"),
+            QStringLiteral("Copy/update %1 files (%2)   Delete %3 files (%4)   Conflicts/errors %5"))
+            .arg(copies).arg(formatBytes(copyBytes)).arg(deletions).arg(formatBytes(deleteBytes)).arg(issues), this);
+        summary->setObjectName(QStringLiteral("summaryLabel"));
         layout->addWidget(summary);
 
         auto* table = new QTableWidget(rows, 5, this);
@@ -347,6 +358,21 @@ SyncProfile fromJson(const QJsonObject& json)
 QString actionTimestamp()
 {
     return QStringLiteral("[%1]").arg(QDateTime::currentDateTime().toString(Qt::ISODate));
+}
+
+QString formatBytes(qint64 bytes)
+{
+    static const QStringList units{QStringLiteral("B"), QStringLiteral("KB"), QStringLiteral("MB"),
+                                   QStringLiteral("GB"), QStringLiteral("TB")};
+    double value = static_cast<double>(std::max<qint64>(0, bytes));
+    int unit = 0;
+    while (value >= 1024.0 && unit + 1 < units.size()) {
+        value /= 1024.0;
+        ++unit;
+    }
+    return unit == 0
+        ? QStringLiteral("%1 %2").arg(static_cast<qint64>(value)).arg(units[unit])
+        : QStringLiteral("%1 %2").arg(value, 0, 'f', 1).arg(units[unit]);
 }
 
 } // namespace
@@ -461,11 +487,12 @@ void MainWindow::applyTheme(bool dark)
 
     const QString style = QStringLiteral(
         "QMainWindow { background: qlineargradient(x1:0,y1:0,x2:1,y2:1, stop:0 %1, stop:1 %2); }"
-        "QWidget { color:%3; font-size:10pt; }"
+        "QWidget { color:%3; font-size:12pt; }"
         "QToolBar { background:%4; border:1px solid %5; border-radius:14px; spacing:7px; padding:8px 12px; margin:12px 16px 0 16px; }"
         "QToolButton { background:transparent; border:1px solid transparent; border-radius:9px; padding:8px 12px; }"
         "QToolButton:hover { background:%6; border-color:%5; }"
-        "QLabel#sectionHeading, QLabel#dialogHeading { font-size:15pt; font-weight:650; padding:2px 1px; }"
+        "QLabel#sectionHeading, QLabel#dialogHeading { font-size:17pt; font-weight:650; padding:2px 1px; }"
+        "QLabel#summaryLabel { font-size:13pt; font-weight:600; background:%4; border:1px solid %5; border-radius:12px; padding:14px 16px; }"
         "QTableWidget, QPlainTextEdit { background:%4; alternate-background-color:%7; border:1px solid %5; border-radius:16px; padding:8px; selection-background-color:%8; selection-color:%3; }"
         "QHeaderView::section { background:%9; color:%10; border:0; border-bottom:1px solid %5; padding:10px 9px; font-weight:600; }"
         "QTableWidget::item { padding:7px; border:0; }"
@@ -649,14 +676,17 @@ void MainWindow::plansReady()
 {
     m_pendingPlans = m_planWatcher->result();
     int plannedActions = 0;
+    int issues = 0;
     for (const SyncPlan& plan : m_pendingPlans) {
         m_log->appendPlainText(uiText(QStringLiteral("%1 %2: %3").arg(actionTimestamp(), plan.profileName,
                                                                            SyncEngine::modeName(plan.mode)),
                                       QStringLiteral("%1 %2: %3").arg(actionTimestamp(), plan.profileName,
                                                                           SyncEngine::modeName(plan.mode))));
         for (const SyncAction& action : plan.actions) {
-            if (action.kind == SyncActionKind::Error || action.kind == SyncActionKind::Conflict)
+            if (action.kind == SyncActionKind::Error || action.kind == SyncActionKind::Conflict) {
+                ++issues;
                 m_log->appendPlainText(QStringLiteral("%1 %2").arg(actionTimestamp(), SyncEngine::logLine(action)));
+            }
             plannedActions += action.kind == SyncActionKind::Copy || action.kind == SyncActionKind::Delete;
         }
         if (plan.actions.isEmpty())
@@ -665,6 +695,24 @@ void MainWindow::plansReady()
     }
 
     if (plannedActions == 0) {
+        if (!m_pendingAutomatic) {
+            QString message;
+            if (m_pendingPlans.isEmpty()) {
+                message = uiText(QStringLiteral("同期設定がありません。先に設定を追加してください。"),
+                                 QStringLiteral("No sync profiles are configured. Add a profile first."));
+            } else if (issues == 0) {
+                message = uiText(QStringLiteral("同期する差分はありません。すべて最新です。"),
+                                 QStringLiteral("There are no changes to sync. Everything is up to date."));
+            } else {
+                message = uiText(QStringLiteral("実行できる同期差分はありません。競合またはエラー %1 件をログで確認してください。")
+                                     .arg(issues),
+                                 QStringLiteral("There are no actionable changes. Check the log for %1 conflict(s) or error(s).")
+                                     .arg(issues));
+            }
+            QMessageBox::information(this,
+                                     uiText(QStringLiteral("同期内容の確認"), QStringLiteral("Sync check")),
+                                     message);
+        }
         setBusy(false);
         return;
     }
