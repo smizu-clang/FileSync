@@ -1,4 +1,7 @@
 # FileSync
+
+![FileSync — ファイル同期ツール](assets/filesync-thumbnail.svg)
+
 File Syncing Tool　ファイル同期ツール
 
 ローカルのフォルダーを同期する Qt Widgets デスクトップアプリです。C++26 / Clang 23 で開発しています。
