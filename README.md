@@ -2,20 +2,21 @@
 File Syncing Tool　ファイル同期ツール
 
 ローカルのフォルダ間で、新規・変更ファイルを同期先へコピーするシンプルなCLIです。
-Python 3.10以降を使い、追加ライブラリなしで動作します。
+C++17 の標準ライブラリだけで動作します。
 
 ## 使い方
 
 まずは変更内容を確認します（既定ではコピーしません）。
 
 ```sh
-python3 filesync.py ./写真 ./バックアップ
+g++ -std=c++17 -O2 -Wall -Wextra -pedantic filesync.cpp -o filesync
+./filesync ./写真 ./バックアップ
 ```
 
 内容を確認してから、実際に同期します。
 
 ```sh
-python3 filesync.py ./写真 ./バックアップ --apply
+./filesync ./写真 ./バックアップ --apply
 ```
 
 FileSyncは同期元にあるファイルだけを同期先へコピーします。同期先だけにあるファイルは削除せず、シンボリックリンクはスキップします。
