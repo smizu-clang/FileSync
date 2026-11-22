@@ -4,7 +4,14 @@ set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "d0edc3af-4c50-42ea-a356-e2862fe7a444")
 set(FILESYNC_VERSION "0.1.0" CACHE STRING "FileSync application version")
 project(FileSync VERSION ${FILESYNC_VERSION} LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 26)
+if(MSVC)
+    # MSVC exposes the latest draft standard as /std:c++latest, while CMake
+    # does not recognize C++26 as a supported dialect for its try_compile checks.
+    set(CMAKE_CXX_STANDARD 23)
+    add_compile_options(/std:c++latest)
+else()
+    set(CMAKE_CXX_STANDARD 26)
+endif()
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_CXX_MODULE_STD ON)
