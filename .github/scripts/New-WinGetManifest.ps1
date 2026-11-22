@@ -21,7 +21,7 @@ ManifestVersion: $manifestVersion
 "@
 
 $japaneseLocale = @"
-# yaml-language-server: `$schema=https://aka.ms/winget-manifest.locale.$manifestVersion.schema.json
+# yaml-language-server: `$schema=https://aka.ms/winget-manifest.defaultLocale.$manifestVersion.schema.json
 PackageIdentifier: $identifier
 PackageVersion: $Version
 PackageLocale: ja-JP
@@ -40,7 +40,7 @@ Tags:
   - synchronization
   - backup
   - qt
-ManifestType: locale
+ManifestType: defaultLocale
 ManifestVersion: $manifestVersion
 "@
 
