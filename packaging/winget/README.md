@@ -1,6 +1,6 @@
 # WinGet release steps
 
-The Windows release workflow builds a per-user Inno Setup installer and creates a ZIP containing versioned WinGet manifests with the installer's SHA-256 hash. A Windows build also runs for pull requests and pushes to `main`. On a `vMAJOR.MINOR.PATCH` tag, the installer and manifest ZIP are attached to a draft GitHub release.
+The Windows release workflow builds a machine-wide Inno Setup installer and creates a ZIP containing versioned WinGet manifests with the installer's SHA-256 hash. A Windows build also runs for pull requests and pushes to `main`. On a `vMAJOR.MINOR.PATCH` tag, the installer and manifest ZIP are attached to a draft GitHub release.
 
 Before publishing through the community WinGet source:
 

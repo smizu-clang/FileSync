@@ -82,7 +82,7 @@ jobs:
           if ($null -eq $redist) { throw "vc_redist.x64.exe was not found under $redistRoot" }
           Copy-Item $redist.FullName (Join-Path $stage 'vc_redist.x64.exe')
 
-      - name: Build per-user installer
+      - name: Build machine-wide installer
         if: startsWith(github.ref, 'refs/tags/v')
         shell: pwsh
         run: |

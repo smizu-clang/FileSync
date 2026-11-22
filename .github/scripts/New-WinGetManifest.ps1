@@ -7,7 +7,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $identifier = 'smizu-clang.FileSync'
-$manifestVersion = '1.10.0'
+$manifestVersion = '1.28.0'
 $hash = (Get-FileHash -LiteralPath $InstallerPath -Algorithm SHA256).Hash
 New-Item -ItemType Directory -Force -Path $OutputDirectory | Out-Null
 
