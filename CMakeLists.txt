@@ -18,6 +18,12 @@ qt_add_executable(FileSync
     syncengine.h
 )
 
+qt_add_resources(FileSync filesync_fonts
+    PREFIX "/fonts"
+    BASE "assets/fonts"
+    FILES "assets/fonts/NotoSansJP-Regular.ttf"
+)
+
 target_link_libraries(FileSync PRIVATE Qt6::Widgets Qt6::Concurrent)
 set_property(TARGET FileSync PROPERTY CXX_MODULE_STD ON)
 set_property(TARGET FileSync PROPERTY CXX_SCAN_FOR_MODULES ON)
