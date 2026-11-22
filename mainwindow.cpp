@@ -29,6 +29,7 @@
 #include <QSet>
 #include <QSettings>
 #include <QSpinBox>
+#include <QStatusBar>
 #include <QTableWidget>
 #include <QTimer>
 #include <QToolBar>
@@ -429,6 +430,10 @@ MainWindow::MainWindow(QWidget* parent)
     layout->addWidget(m_log, 2);
     setCentralWidget(central);
 
+    auto* copyrightNotice = new QLabel(QStringLiteral("© 2026 smizu-clang"), this);
+    copyrightNotice->setObjectName(QStringLiteral("copyrightNotice"));
+    statusBar()->addPermanentWidget(copyrightNotice);
+
     retranslateUi();
     loadProfiles();
     refreshTable();
@@ -508,6 +513,9 @@ void MainWindow::applyTheme(bool dark)
         "QPushButton:default { background:%11; color:white; border-color:%11; font-weight:600; }"
         "QCheckBox { spacing:8px; } QCheckBox::indicator { width:17px; height:17px; }"
         "QDialog { background:%1; } QDialogButtonBox { border:0; }"
+        "QStatusBar { background:transparent; color:%10; border-top:1px solid %5; }"
+        "QStatusBar::item { border:0; }"
+        "QLabel#copyrightNotice { color:%10; font-size:10pt; padding:0 12px 0 4px; }"
         "QScrollBar:vertical { background:transparent; width:10px; margin:4px; }"
         "QScrollBar::handle:vertical { background:%5; border-radius:5px; min-height:24px; }"
         "QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height:0; }"
