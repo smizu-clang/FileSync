@@ -1,11 +1,14 @@
-cmake_minimum_required(VERSION 3.21)
+cmake_minimum_required(VERSION 4.2)
+
+set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "d0edc3af-4c50-42ea-a356-e2862fe7a444")
 project(FileSync VERSION 0.1.0 LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
+set(CMAKE_CXX_MODULE_STD ON)
 
-find_package(Qt6 6.2 REQUIRED COMPONENTS Widgets Concurrent)
+find_package(Qt6 6.10 REQUIRED COMPONENTS Widgets Concurrent)
 
 qt_add_executable(FileSync
     main.cpp
@@ -16,6 +19,8 @@ qt_add_executable(FileSync
 )
 
 target_link_libraries(FileSync PRIVATE Qt6::Widgets Qt6::Concurrent)
+set_property(TARGET FileSync PROPERTY CXX_MODULE_STD ON)
+set_property(TARGET FileSync PROPERTY CXX_SCAN_FOR_MODULES ON)
 
 set_target_properties(FileSync PROPERTIES
     WIN32_EXECUTABLE ON

@@ -2,16 +2,18 @@
 File Syncing Tool　ファイル同期ツール
 
 ローカルのフォルダ間で、新規・変更ファイルを同期先へコピーするシンプルなCLIです。
-Qt Widgets を使った C++17 のデスクトップアプリです。
+Qt Widgets を使った C++26 のデスクトップアプリです。
 
 ## 使い方
 
 ## ビルド
 
 ```sh
-cmake -S . -B build -G Ninja
+cmake -S . -B build -G Ninja -DCMAKE_CXX_COMPILER=clang++
 cmake --build build
 ```
+
+このプロジェクトは C++26 と `import std` を使います。CMake 4.2 以降と Ninja 1.11 以降が必要です。`import std` の CMake 対応は現在実験扱いです。
 
 Ninja がない環境では `-G Ninja` を省略できます。CMake はビルド手順を生成し、Ninja はその手順でコンパイルします。アプリは通常の Qt ウィンドウとして起動します。
 

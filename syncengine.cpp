@@ -1,3 +1,5 @@
+import std;
+
 #include "syncengine.h"
 
 #include <QCryptographicHash>
@@ -6,14 +8,12 @@
 #include <QDirIterator>
 #include <QFile>
 #include <QFileInfo>
-#include <QMap>
 #include <QRegularExpression>
 #include <QSaveFile>
-#include <QSet>
 
 namespace {
 
-using FileMap = QMap<QString, QFileInfo>;
+using FileMap = std::map<QString, QFileInfo>;
 
 QString normalizedPath(const QString& path)
 {
@@ -64,7 +64,7 @@ FileMap scan(const QString& root, bool recursive)
         const QFileInfo info = it.fileInfo();
         if (info.isSymLink() || !info.isFile())
             continue;
-        files.insert(rootDir.relativeFilePath(path), info);
+        files.emplace(rootDir.relativeFilePath(path), info);
     }
     return files;
 }
@@ -166,26 +166,30 @@ QStringList SyncEngine::run(const SyncProfile& profile)
     const FileMap destinationFiles = scan(destinationRoot, profile.recursive);
 
     if (profile.twoWay) {
-        QSet<QString> paths;
-        for (auto it = sourceFiles.cbegin(); it != sourceFiles.cend(); ++it)
-            paths.insert(it.key());
-        for (auto it = destinationFiles.cbegin(); it != destinationFiles.cend(); ++it)
-            paths.insert(it.key());
+        std::set<QString> paths;
+        for (const auto& [relative, info] : sourceFiles) {
+            Q_UNUSED(info);
+            paths.insert(relative);
+        }
+        for (const auto& [relative, info] : destinationFiles) {
+            Q_UNUSED(info);
+            paths.insert(relative);
+        }
 
         for (const QString& relative : paths) {
             if (!matchesFilter(relative, extensions))
                 continue;
-            const auto sourceIt = sourceFiles.constFind(relative);
-            const auto destinationIt = destinationFiles.constFind(relative);
+            const auto sourceIt = sourceFiles.find(relative);
+            const auto destinationIt = destinationFiles.find(relative);
             const QString sourcePath = QDir(sourceRoot).filePath(relative);
             const QString destinationPath = QDir(destinationRoot).filePath(relative);
             if (sourceIt == sourceFiles.cend()) {
                 copyFile(destinationPath, sourcePath, log);
             } else if (destinationIt == destinationFiles.cend()) {
                 copyFile(sourcePath, destinationPath, log);
-            } else if (!sameContents(*sourceIt, *destinationIt)) {
-                const auto sourceTime = sourceIt->lastModified();
-                const auto destinationTime = destinationIt->lastModified();
+            } else if (!sameContents(sourceIt->second, destinationIt->second)) {
+                const auto sourceTime = sourceIt->second.lastModified();
+                const auto destinationTime = destinationIt->second.lastModified();
                 if (sourceTime > destinationTime)
                     copyFile(sourcePath, destinationPath, log);
                 else if (destinationTime > sourceTime)
@@ -196,23 +200,23 @@ QStringList SyncEngine::run(const SyncProfile& profile)
         }
     } else {
         for (auto it = sourceFiles.cbegin(); it != sourceFiles.cend(); ++it) {
-            const QString relative = it.key();
+            const QString relative = it->first;
             if (!matchesFilter(relative, extensions))
                 continue;
             const QString destinationPath = QDir(destinationRoot).filePath(relative);
-            const auto destinationIt = destinationFiles.constFind(relative);
-            copyIfDifferent(it->absoluteFilePath(), destinationPath, *it,
-                            destinationIt == destinationFiles.cend() ? nullptr : &*destinationIt, log);
+            const auto destinationIt = destinationFiles.find(relative);
+            copyIfDifferent(it->second.absoluteFilePath(), destinationPath, it->second,
+                            destinationIt == destinationFiles.cend() ? nullptr : &destinationIt->second, log);
         }
 
         if (profile.deleteExtras) {
             for (auto it = destinationFiles.cbegin(); it != destinationFiles.cend(); ++it) {
-                if (sourceFiles.contains(it.key()) || !matchesFilter(it.key(), extensions))
+                if (sourceFiles.contains(it->first) || !matchesFilter(it->first, extensions))
                     continue;
-                if (QFile::remove(it->absoluteFilePath()))
-                    log << QStringLiteral("削除: %1").arg(it->absoluteFilePath());
+                if (QFile::remove(it->second.absoluteFilePath()))
+                    log << QStringLiteral("削除: %1").arg(it->second.absoluteFilePath());
                 else
-                    log << QStringLiteral("エラー: 削除できません: %1").arg(it->absoluteFilePath());
+                    log << QStringLiteral("エラー: 削除できません: %1").arg(it->second.absoluteFilePath());
             }
         }
     }
