@@ -16,3 +16,8 @@ qt_add_executable(FileSync
 )
 
 target_link_libraries(FileSync PRIVATE Qt6::Widgets Qt6::Concurrent)
+
+set_target_properties(FileSync PROPERTIES
+    WIN32_EXECUTABLE ON
+    MACOSX_BUNDLE ON
+)

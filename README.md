@@ -9,9 +9,11 @@ Qt Widgets を使った C++17 のデスクトップアプリです。
 ## ビルド
 
 ```sh
-cmake -S . -B build
+cmake -S . -B build -G Ninja
 cmake --build build
 ```
+
+Ninja がない環境では `-G Ninja` を省略できます。CMake はビルド手順を生成し、Ninja はその手順でコンパイルします。アプリは通常の Qt ウィンドウとして起動します。
 
 ## 同期機能
 
