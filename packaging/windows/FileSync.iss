@@ -1,5 +1,5 @@
 #ifndef AppVersion
-  #define AppVersion "1.0.1"
+  #define AppVersion "1.0.2"
 #endif
 
 #ifndef StageDir
@@ -19,6 +19,7 @@ ArchitecturesInstallIn64BitMode=x64
 OutputBaseFilename=FileSync-{#AppVersion}-x64-setup
 UninstallDisplayIcon={app}\FileSync.exe
 WizardStyle=modern
+SetupIconFile=..\..\assets\filesync-icon.ico
 DisableProgramGroupPage=yes
 Compression=lzma2/ultra64
 SolidCompression=yes

@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 4.2)
 
 set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "d0edc3af-4c50-42ea-a356-e2862fe7a444")
-set(FILESYNC_VERSION "1.0.1" CACHE STRING "FileSync application version")
+set(FILESYNC_VERSION "1.0.2" CACHE STRING "FileSync application version")
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 project(FileSync VERSION ${FILESYNC_VERSION} LANGUAGES CXX)
 
@@ -20,6 +20,10 @@ set(CMAKE_AUTOMOC ON)
 
 find_package(Qt6 6.10 REQUIRED COMPONENTS Widgets Concurrent)
 
+if(WIN32)
+    enable_language(RC)
+endif()
+
 qt_add_executable(FileSync
     main.cpp
     mainwindow.cpp
@@ -33,6 +37,18 @@ qt_add_resources(FileSync filesync_fonts
     BASE "assets/fonts"
     FILES "assets/fonts/NotoSansJP-Regular.ttf"
 )
+
+qt_add_resources(FileSync filesync_icons
+    PREFIX "/icons"
+    BASE "assets"
+    FILES "assets/filesync-icon.png"
+)
+
+if(WIN32)
+    set(FILESYNC_ICON_PATH "${CMAKE_CURRENT_SOURCE_DIR}/assets/filesync-icon.ico")
+    configure_file(assets/windows/FileSync.rc.in "${CMAKE_CURRENT_BINARY_DIR}/FileSyncIcon.rc" @ONLY)
+    target_sources(FileSync PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/FileSyncIcon.rc")
+endif()
 
 target_link_libraries(FileSync PRIVATE Qt6::Widgets Qt6::Concurrent)
 if(MSVC)

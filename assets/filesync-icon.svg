@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">FileSync</title>
+  <defs>
+    <linearGradient id="tile" x1="57" y1="33" x2="457" y2="479" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#182b4b"/>
+      <stop offset="1" stop-color="#091426"/>
+    </linearGradient>
+    <linearGradient id="folder" x1="115" y1="151" x2="390" y2="408" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#9be4ff"/>
+      <stop offset=".48" stop-color="#62baff"/>
+      <stop offset="1" stop-color="#6489ff"/>
+    </linearGradient>
+    <linearGradient id="front" x1="130" y1="262" x2="390" y2="405" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#438edb"/>
+      <stop offset="1" stop-color="#536fe0"/>
+    </linearGradient>
+    <linearGradient id="arrow" x1="187" y1="225" x2="335" y2="348" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#f3fbff"/>
+      <stop offset="1" stop-color="#a6dfff"/>
+    </linearGradient>
+    <linearGradient id="shine" x1="110" y1="65" x2="390" y2="245" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fff" stop-opacity=".22"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="shadow" x="47" y="112" width="418" height="352" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse">
+      <feGaussianBlur stdDeviation="18"/>
+    </filter>
+  </defs>
+  <rect x="16" y="16" width="480" height="480" rx="116" fill="url(#tile)"/>
+  <rect x="17" y="17" width="478" height="478" rx="115" stroke="#d8ecff" stroke-opacity=".34" stroke-width="2"/>
+  <path d="M34 132C83 61 161 28 255 28h124c57 0 99 42 99 99v38C390 124 327 91 248 91c-81 0-155 31-214 82z" fill="url(#shine)"/>
+  <circle cx="413" cy="119" r="48" fill="#6be0ff" fill-opacity=".12"/>
+
+  <path d="M103 165c0-16 13-29 29-29h83l37 37h128c17 0 31 14 31 31v155c0 18-14 32-32 32H119c-18 0-32-14-32-32V181c0-9 7-16 16-16Z" fill="#4ca5ef" opacity=".27" filter="url(#shadow)"/>
+  <path d="M96 158c0-16 13-29 29-29h84l37 37h138c17 0 31 14 31 31v149c0 18-14 32-32 32H119c-18 0-32-14-32-32V174c0-9 7-16 16-16Z" fill="url(#folder)"/>
+  <path d="M88 230c0-17 14-31 31-31h282c17 0 31 14 31 31v117c0 18-14 32-32 32H119c-18 0-32-14-32-32V230Z" fill="url(#front)"/>
+  <path d="M91 230c0-16 13-29 29-29h282" fill="none" stroke="#dcf5ff" stroke-opacity=".54" stroke-width="4" stroke-linecap="round"/>
+
+  <circle cx="256" cy="282" r="91" fill="#0b1b32" fill-opacity=".62" stroke="#e7f5ff" stroke-opacity=".68" stroke-width="4"/>
+  <circle cx="256" cy="282" r="79" fill="none" stroke="#a9dfff" stroke-opacity=".12" stroke-width="2"/>
+  <path d="M202 265c7-32 35-55 68-55 24 0 45 12 58 31" fill="none" stroke="url(#arrow)" stroke-width="15" stroke-linecap="round"/>
+  <path d="m310 235 23 6-5-23" fill="none" stroke="#e9f8ff" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M310 301c-7 32-35 55-68 55-24 0-45-12-58-31" fill="none" stroke="url(#arrow)" stroke-width="15" stroke-linecap="round"/>
+  <path d="m202 331-23-6 5 23" fill="none" stroke="#b7e8ff" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <path d="M48 352c42 69 118 112 208 112 98 0 171-40 207-103" fill="none" stroke="#9cceff" stroke-opacity=".13" stroke-width="2"/>
+</svg>

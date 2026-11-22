@@ -3,12 +3,14 @@
 #include <QApplication>
 #include <QFont>
 #include <QFontDatabase>
+#include <QIcon>
 
 int main(int argc, char* argv[])
 {
     QApplication app(argc, argv);
     QApplication::setApplicationName(QStringLiteral("FileSync"));
     QApplication::setOrganizationName(QStringLiteral("smizu-clang"));
+    app.setWindowIcon(QIcon(QStringLiteral(":/icons/filesync-icon.png")));
 
     const int bundledFont = QFontDatabase::addApplicationFont(QStringLiteral(":/fonts/NotoSansJP-Regular.ttf"));
     if (bundledFont >= 0) {
