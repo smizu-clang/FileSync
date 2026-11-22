@@ -9,7 +9,7 @@ if(MSVC)
     # MSVC exposes the latest draft standard as /std:c++latest, while CMake
     # does not recognize C++26 as a supported dialect for its try_compile checks.
     set(CMAKE_CXX_STANDARD 23)
-    add_compile_options(/std:c++latest)
+    add_compile_options(/std:c++latest /utf-8)
 else()
     set(CMAKE_CXX_STANDARD 26)
 endif()
