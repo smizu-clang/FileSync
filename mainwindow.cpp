@@ -400,6 +400,7 @@ MainWindow::MainWindow(QWidget* parent)
     m_toolbar->addAction(QString(), this, &MainWindow::openAppearanceSettings);
 
     auto* central = new QWidget(this);
+    central->setObjectName(QStringLiteral("centralPanel"));
     auto* layout = new QVBoxLayout(central);
     layout->setContentsMargins(22, 18, 22, 20);
     layout->setSpacing(14);
@@ -463,12 +464,12 @@ void MainWindow::retranslateUi()
 
 void MainWindow::applyTheme(bool dark)
 {
-    const QString window = dark ? QStringLiteral("#111827") : QStringLiteral("#eaf2fb");
-    const QString surface = dark ? QStringLiteral("rgba(31, 42, 61, 225)") : QStringLiteral("rgba(255, 255, 255, 222)");
-    const QString raised = dark ? QStringLiteral("rgba(43, 57, 79, 238)") : QStringLiteral("rgba(255, 255, 255, 245)");
+    const QString window = dark ? QStringLiteral("#0b1324") : QStringLiteral("#d9e8fa");
+    const QString surface = dark ? QStringLiteral("rgba(44, 65, 97, 145)") : QStringLiteral("rgba(255, 255, 255, 132)");
+    const QString raised = dark ? QStringLiteral("rgba(102, 132, 175, 102)") : QStringLiteral("rgba(255, 255, 255, 168)");
     const QString text = dark ? QStringLiteral("#edf4ff") : QStringLiteral("#203047");
     const QString muted = dark ? QStringLiteral("#a9bad1") : QStringLiteral("#6b7d95");
-    const QString border = dark ? QStringLiteral("rgba(183, 204, 235, 38)") : QStringLiteral("rgba(78, 112, 158, 38)");
+    const QString border = dark ? QStringLiteral("rgba(193, 216, 249, 88)") : QStringLiteral("rgba(64, 104, 160, 78)");
     const QString accent = dark ? QStringLiteral("#72aaff") : QStringLiteral("#3979d8");
     const QString hover = dark ? QStringLiteral("rgba(114, 170, 255, 28)") : QStringLiteral("rgba(57, 121, 216, 18)");
     const QString selection = dark ? QStringLiteral("#345b91") : QStringLiteral("#cfe2ff");
@@ -486,17 +487,20 @@ void MainWindow::applyTheme(bool dark)
     QApplication::setPalette(palette);
 
     const QString style = QStringLiteral(
-        "QMainWindow { background: qlineargradient(x1:0,y1:0,x2:1,y2:1, stop:0 %1, stop:1 %2); }"
+        "QMainWindow { background: qlineargradient(x1:0,y1:0,x2:1,y2:1, stop:0 %1, stop:0.48 %2, stop:1 %1); }"
+        "QWidget#centralPanel { background:transparent; }"
         "QWidget { color:%3; font-size:12pt; }"
-        "QToolBar { background:%4; border:1px solid %5; border-radius:14px; spacing:7px; padding:8px 12px; margin:12px 16px 0 16px; }"
+        "QToolBar { background:%4; border:1px solid %5; border-radius:18px; spacing:8px; padding:10px 14px; margin:12px 16px 0 16px; }"
         "QToolButton { background:transparent; border:1px solid transparent; border-radius:9px; padding:8px 12px; }"
         "QToolButton:hover { background:%6; border-color:%5; }"
         "QLabel#sectionHeading, QLabel#dialogHeading { font-size:17pt; font-weight:650; padding:2px 1px; }"
         "QLabel#summaryLabel { font-size:13pt; font-weight:600; background:%4; border:1px solid %5; border-radius:12px; padding:14px 16px; }"
-        "QTableWidget, QPlainTextEdit { background:%4; alternate-background-color:%7; border:1px solid %5; border-radius:16px; padding:8px; selection-background-color:%8; selection-color:%3; }"
-        "QHeaderView::section { background:%9; color:%10; border:0; border-bottom:1px solid %5; padding:10px 9px; font-weight:600; }"
-        "QTableWidget::item { padding:7px; border:0; }"
+        "QTableWidget, QPlainTextEdit { background:%4; alternate-background-color:%7; border:1px solid %5; border-radius:18px; padding:9px; selection-background-color:%8; selection-color:%3; }"
+        "QTableWidget::viewport, QPlainTextEdit::viewport { background:transparent; }"
+        "QHeaderView::section { background:%9; color:%10; border:0; border-bottom:1px solid %5; padding:12px 10px; font-weight:600; }"
+        "QTableWidget::item { padding:9px; border:0; }"
         "QTableWidget::item:hover { background:%6; }"
+        "QTableWidget::item:selected { background:%8; }"
         "QLineEdit, QComboBox, QSpinBox { background:%9; border:1px solid %5; border-radius:9px; padding:8px 10px; selection-background-color:%8; }"
         "QLineEdit:focus, QComboBox:focus, QSpinBox:focus { border:1px solid %11; }"
         "QPushButton { background:%9; border:1px solid %5; border-radius:9px; padding:8px 14px; }"

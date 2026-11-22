@@ -1,0 +1,140 @@
+name: Windows release
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: windows-2022
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.10.2'
+          host: windows
+          target: desktop
+          arch: win64_msvc2022_64
+
+      - name: Install CMake and Ninja
+        uses: lukka/get-cmake@latest
+        with:
+          cmakeVersion: 4.2.3
+          ninjaVersion: 1.13.2
+
+      - name: Install Inno Setup
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        run: choco install innosetup --yes --no-progress
+
+      - name: Read release version
+        id: version
+        shell: pwsh
+        run: |
+          $version = '0.1.0'
+          if ($env:GITHUB_REF_TYPE -eq 'tag') {
+            $version = $env:GITHUB_REF_NAME -replace '^v', ''
+            if ($version -notmatch '^\d+\.\d+\.\d+$') { throw "Tag must be vMAJOR.MINOR.PATCH; got $env:GITHUB_REF_NAME" }
+          }
+          "value=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Configure and build
+        shell: pwsh
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release "-DFILESYNC_VERSION=${{ steps.version.outputs.value }}"
+          cmake --build build --parallel
+
+      - name: Stage Qt runtime and licenses
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        run: |
+          $stage = Join-Path $PWD 'dist'
+          New-Item -ItemType Directory -Force -Path $stage | Out-Null
+          Copy-Item 'build/FileSync.exe' $stage
+          windeployqt --release --compiler-runtime --no-translations --dir $stage (Join-Path $stage 'FileSync.exe')
+          $licenses = Join-Path $stage 'licenses'
+          New-Item -ItemType Directory -Force -Path $licenses | Out-Null
+          Copy-Item 'LICENSE' (Join-Path $licenses 'FileSync-Apache-2.0.txt')
+          Copy-Item 'assets/fonts/OFL.txt' (Join-Path $licenses 'NotoSansJP-OFL.txt')
+          @"
+          FileSync dynamically links Qt 6.10.2 (Qt Core, Gui, Widgets, and Concurrent).
+          Qt licensing information: https://doc.qt.io/qt-6.10/licensing.html
+          Qt LGPLv3 terms: https://doc.qt.io/qt-6.10/lgpl.html
+          Qt 6.10.2 source archive: https://download.qt.io/official_releases/qt/6.10/6.10.2/single/qt-everywhere-src-6.10.2.tar.xz
+          "@ | Set-Content (Join-Path $licenses 'Qt-Licensing.txt') -Encoding utf8
+          $redistRoot = Join-Path $env:VSINSTALLDIR 'VC\Redist'
+          $redist = Get-ChildItem -Path $redistRoot -Filter 'vc_redist.x64.exe' -Recurse | Sort-Object FullName -Descending | Select-Object -First 1
+          if ($null -eq $redist) { throw "vc_redist.x64.exe was not found under $redistRoot" }
+          Copy-Item $redist.FullName (Join-Path $stage 'vc_redist.x64.exe')
+
+      - name: Build per-user installer
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        run: |
+          $version = '${{ steps.version.outputs.value }}'
+          $stage = (Resolve-Path 'dist').Path
+          $output = Join-Path $PWD 'installer-output'
+          New-Item -ItemType Directory -Force -Path $output | Out-Null
+          $iscc = (Get-Command ISCC.exe -ErrorAction Stop).Source
+          & $iscc "/DAppVersion=$version" "/DStageDir=$stage" "/O$output" 'packaging/windows/FileSync.iss'
+
+      - name: Generate WinGet manifests
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        run: |
+          $version = '${{ steps.version.outputs.value }}'
+          $installer = (Resolve-Path "installer-output/FileSync-$version-x64-setup.exe").Path
+          $installerUrl = "https://github.com/$env:GITHUB_REPOSITORY/releases/download/v$version/FileSync-$version-x64-setup.exe"
+          ./.github/scripts/New-WinGetManifest.ps1 -Version $version -InstallerUrl $installerUrl -InstallerPath $installer -OutputDirectory 'dist/winget-manifests'
+          $winget = Get-Command winget.exe -ErrorAction SilentlyContinue
+          if ($null -ne $winget) {
+            winget validate --manifest 'dist/winget-manifests'
+            if ($LASTEXITCODE -ne 0) { throw 'WinGet manifest validation failed.' }
+          }
+          Compress-Archive -Path 'dist/winget-manifests/*' -DestinationPath "dist/FileSync-$version-winget-manifests.zip" -Force
+
+      - name: Upload release assets
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-release-assets
+          path: |
+            installer-output/FileSync-*-x64-setup.exe
+            dist/FileSync-*-winget-manifests.zip
+
+  draft-release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: package
+    runs-on: windows-2022
+    permissions:
+      contents: write
+    steps:
+      - name: Download release assets
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-release-assets
+          path: release-assets
+
+      - name: Create draft release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          generate_release_notes: true
+          files: |
+            release-assets/installer-output/FileSync-*-x64-setup.exe
+            release-assets/dist/FileSync-*-winget-manifests.zip

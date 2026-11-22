@@ -28,3 +28,7 @@ Ninja がない環境では `-G Ninja` を省略できます。CMake はビル�
 - 削除・上書き前に計画時のファイル内容と照合
 
 同梱フォントはNoto Sans JP（SIL Open Font License 1.1）です。ライセンスは `assets/fonts/OFL.txt` に含まれています。
+
+## Windows / WinGet
+
+Windows向けのビルド、Inno Setupインストーラー、WinGetマニフェスト生成手順は [`packaging/winget/README.md`](packaging/winget/README.md) を参照してください。
